@@ -153,16 +153,32 @@ if st.button("🚀 Generate Travel Guide"):
     Budget Level: {budget}
     Travel Purpose: {purpose}
 
+    IMPORTANT FORMAT RULES:
+    - Do NOT use tables.
+    - Do NOT write long paragraphs.
+    - Use clear headings.
+    - Use bullet points.
+    - Keep each point short and structured.
+    - For the budget section, show category-wise costs clearly like:
+    Accommodation: ₹XXX–₹XXX
+    Food: ₹XXX–₹XXX
+    Transportation: ₹XXX–₹XXX
+    Attractions: ₹XXX–₹XXX
+    Miscellaneous: ₹XXX–₹XXX
+    Total Per Day: ₹XXX–₹XXX
+
     Include:
 
-    1. Overview of destination
-    2. Top attractions related to the purpose
-    3. Budget breakdown for students
-    4. Best time to visit
-    5. Food recommendations
-    6. Transportation tips
-    7. Safety tips for students
+    1. Overview
+    2. Top Attractions
+    3. Budget Breakdown (bullet format, no table)
+    4. Best Time to Visit
+    5. Food Recommendations
+    6. Transportation Tips
+    7. Safety Tips
     """
+
+
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
