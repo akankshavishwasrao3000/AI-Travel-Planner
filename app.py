@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import os
-import streamlit as st
 
 API_KEY = st.secrets.get("OPENROUTER_API_KEY", None) or os.getenv("OPENROUTER_API_KEY")
 
