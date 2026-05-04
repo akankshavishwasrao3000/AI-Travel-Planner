@@ -1,5 +1,13 @@
 import streamlit as st
 import requests
+import os
+import streamlit as st
+
+API_KEY = st.secrets.get("OPENROUTER_API_KEY", None) or os.getenv("OPENROUTER_API_KEY")
+
+if not API_KEY:
+    st.error("Missing OPENROUTER_API_KEY. Please set it in environment variables.")
+    st.stop()
 
 st.set_page_config(
     page_title="AI Travel Planner",
@@ -160,12 +168,12 @@ if st.button("🚀 Generate Travel Guide"):
     - Use bullet points.
     - Keep each point short and structured.
     - For the budget section, show category-wise costs clearly like:
-    Accommodation: ₹XXX–₹XXX
-    Food: ₹XXX–₹XXX
-    Transportation: ₹XXX–₹XXX
-    Attractions: ₹XXX–₹XXX
-    Miscellaneous: ₹XXX–₹XXX
-    Total Per Day: ₹XXX–₹XXX
+    Accommodation: ₹XXX-₹XXX
+    Food: ₹XXX-₹XXX
+    Transportation: ₹XXX-₹XXX
+    Attractions: ₹XXX-₹XXX
+    Miscellaneous: ₹XXX-₹XXX
+    Total Per Day: ₹XXX-₹XXX
 
     Include:
 
