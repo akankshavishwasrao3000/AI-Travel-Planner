@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import os
 
-API_KEY = st.secrets.get("OPENROUTER_API_KEY", None) or os.getenv("OPENROUTER_API_KEY")
+API_KEY = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
 
 if not API_KEY:
     st.error("Missing OPENROUTER_API_KEY. Please set it in environment variables.")
