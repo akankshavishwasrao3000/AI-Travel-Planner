@@ -129,7 +129,7 @@ section[data-testid="stSidebar"] .stButton>button {
 st.markdown('<p class="main-title">✈️ AI Travel Planner for Students</p>', unsafe_allow_html=True)
 st.write("Discover destinations, costs, and personalized student travel insights using AI.")
 
-API_KEY = st.secrets["OPENROUTER_API_KEY"]
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 st.sidebar.header("🌍 Trip Details")
 
@@ -185,7 +185,6 @@ if st.button("🚀 Generate Travel Guide"):
     6. Transportation Tips
     7. Safety Tips
     """
-
 
 
     headers = {
