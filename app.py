@@ -2,6 +2,12 @@ import streamlit as st
 import requests
 import os
 
+
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+if not API_KEY:
+    st.error("Missing OPENROUTER_API_KEY. Please set it in Railway Variables.")
+    st.stop()
     
 st.set_page_config(
     page_title="AI Travel Planner",
@@ -123,7 +129,7 @@ section[data-testid="stSidebar"] .stButton>button {
 st.markdown('<p class="main-title">✈️ AI Travel Planner for Students</p>', unsafe_allow_html=True)
 st.write("Discover destinations, costs, and personalized student travel insights using AI.")
 
-API_KEY = st.secrets["OPENROUTER_API_KEY"]
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 st.sidebar.header("🌍 Trip Details")
 
