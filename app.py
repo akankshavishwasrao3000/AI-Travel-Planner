@@ -58,6 +58,7 @@ st.markdown("""
 }
 
 @keyframes gradientMove {
+
     0% {
         background-position: 0% 50%;
     }
@@ -69,6 +70,7 @@ st.markdown("""
     100% {
         background-position: 0% 50%;
     }
+
 }
 
 .card {
@@ -170,7 +172,7 @@ purpose = st.sidebar.selectbox(
 
 if st.button("🚀 Generate Travel Guide"):
 
-    # -------- PROMPT --------
+    # ---------------- PROMPT ----------------
 
     prompt = f"""
 Create a detailed student travel guide.
@@ -208,7 +210,7 @@ Include:
 """
 
 
-    # -------- API HEADERS --------
+    # ---------------- API HEADERS ----------------
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -216,7 +218,7 @@ Include:
     }
 
 
-    # -------- API DATA --------
+    # ---------------- API DATA ----------------
 
     data = {
         "model": "openrouter/auto",
@@ -225,11 +227,12 @@ Include:
                 "role": "user",
                 "content": prompt
             }
-        ]
+        ],
+        "max_tokens": 1000
     }
 
 
-    # -------- API REQUEST --------
+    # ---------------- API REQUEST ----------------
 
     with st.spinner("🤖 AI is generating travel guide..."):
 
@@ -243,69 +246,80 @@ Include:
             )
 
 
-            # -------- SUCCESS --------
+            # ---------------- SUCCESS ----------------
 
             if response.status_code == 200:
 
                 response_data = response.json()
 
-                result = response_data["choices"][0]["message"]["content"]
+                # Check that choices exists
+                if "choices" in response_data:
 
-                st.success("✅ Travel Guide Ready!")
+                    result = response_data["choices"][0]["message"]["content"]
 
-
-                # -------- COLUMNS --------
-
-                col1, col2 = st.columns([3, 1])
+                    st.success("✅ Travel Guide Ready!")
 
 
-                # -------- TRAVEL GUIDE --------
+                    # ---------------- COLUMNS ----------------
 
-                with col1:
+                    col1, col2 = st.columns([3, 1])
 
-                    st.markdown(
-                        "### 📍 Destination Travel Guide"
+
+                    # ---------------- TRAVEL GUIDE ----------------
+
+                    with col1:
+
+                        st.markdown(
+                            "### 📍 Destination Travel Guide"
+                        )
+
+                        st.markdown(
+                            f"""
+                            <div class="card">
+                            {result}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+
+                    # ---------------- TRAVEL TIPS ----------------
+
+                    with col2:
+
+                        st.markdown(
+                            "### 💡 Student Travel Tips"
+                        )
+
+                        st.markdown(
+                            """
+                            <div class="card">
+
+                            ✔ Travel in groups to save money<br><br>
+
+                            ✔ Use public transport<br><br>
+
+                            ✔ Book hostels or dorms<br><br>
+
+                            ✔ Eat local food<br><br>
+
+                            ✔ Carry student ID for discounts
+
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                else:
+
+                    st.error(
+                        "The API response did not contain a travel guide."
                     )
 
-                    st.markdown(
-                        f"""
-                        <div class="card">
-                        {result}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    st.json(response_data)
 
 
-                # -------- TRAVEL TIPS --------
-
-                with col2:
-
-                    st.markdown(
-                        "### 💡 Student Travel Tips"
-                    )
-
-                    st.markdown(
-                        """
-                        <div class="card">
-
-                        ✔ Travel in groups to save money<br><br>
-
-                        ✔ Use public transport<br><br>
-
-                        ✔ Book hostels or dorms<br><br>
-
-                        ✔ Eat local food<br><br>
-
-                        ✔ Carry student ID for discounts
-
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-
-            # -------- API ERROR --------
+            # ---------------- API ERROR ----------------
 
             else:
 
@@ -314,13 +328,17 @@ Include:
                 )
 
                 try:
-                    st.json(response.json())
+
+                    error_data = response.json()
+
+                    st.json(error_data)
 
                 except Exception:
+
                     st.write(response.text)
 
 
-        # -------- CONNECTION ERROR --------
+        # ---------------- TIMEOUT ERROR ----------------
 
         except requests.exceptions.Timeout:
 
@@ -329,6 +347,8 @@ Include:
             )
 
 
+        # ---------------- CONNECTION ERROR ----------------
+
         except requests.exceptions.RequestException as e:
 
             st.error(
@@ -336,7 +356,7 @@ Include:
             )
 
 
-        # -------- OTHER ERROR --------
+        # ---------------- OTHER ERROR ----------------
 
         except Exception as e:
 
