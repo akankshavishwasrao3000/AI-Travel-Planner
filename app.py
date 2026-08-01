@@ -1,18 +1,16 @@
 import streamlit as st
 import requests
 import os
-
-
-# ---------------- API KEY ----------------
+import re
+import html
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not API_KEY:
-    st.error("Missing OPENROUTER_API_KEY. Please set it in your environment variables.")
+    st.error(
+        "Missing OPENROUTER_API_KEY. Please set it in your environment variables."
+    )
     st.stop()
-
-
-# ---------------- PAGE CONFIG ----------------
 
 st.set_page_config(
     page_title="AI Travel Planner",
@@ -20,8 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
-# ---------------- CUSTOM CSS ----------------
 
 st.markdown("""
 <style>
@@ -84,6 +80,69 @@ st.markdown("""
     font-size: 16px;
 }
 
+/* Main section headings */
+.travel-heading {
+    color: #dd2476;
+    font-size: 25px;
+    font-weight: 800;
+    margin-top: 25px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #dd2476;
+    padding-bottom: 6px;
+}
+
+/* Place / activity names */
+.travel-subheading {
+    color: #1fa2ff;
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 18px;
+    margin-bottom: 5px;
+}
+
+/* Normal bullet points */
+.travel-point {
+    color: #333;
+    margin: 5px 0;
+    padding-left: 8px;
+}
+
+/* Important labels */
+.travel-label {
+    color: #ff512f;
+    font-weight: 700;
+}
+
+/* Budget box */
+.budget-box {
+    background: linear-gradient(
+        135deg,
+        rgba(255,81,47,0.08),
+        rgba(221,36,118,0.08)
+    );
+    border-left: 5px solid #dd2476;
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin: 10px 0 20px 0;
+}
+
+/* Budget total */
+.budget-total {
+    background: linear-gradient(135deg, #ff512f, #dd2476);
+    color: white;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 19px;
+    font-weight: bold;
+    margin: 12px 0;
+}
+
+/* Normal information */
+.travel-text {
+    color: #333;
+    margin: 7px 0;
+}
+
 .stButton > button {
     background: linear-gradient(135deg, #ff512f, #dd2476);
     color: white;
@@ -129,7 +188,199 @@ section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] {
 """, unsafe_allow_html=True)
 
 
-# ---------------- TITLE ----------------
+def format_travel_result(text):
+
+    text = text.replace("**", "")
+    text = text.replace("*", "")
+
+    text = re.sub(r"\[\d+\]", "", text)
+
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+
+    text = html.escape(text)
+
+    lines = text.splitlines()
+
+    output = []
+
+    budget_section = False
+
+    for line in lines:
+
+        line = line.strip()
+
+        if not line:
+            continue
+
+        heading_match = re.match(
+            r"^(\d+)\.\s*(.+)$",
+            line
+        )
+
+        if heading_match:
+
+            heading_number = heading_match.group(1)
+            heading_text = heading_match.group(2).strip()
+
+            output.append(
+                f"""
+                <div class="travel-heading">
+                    {heading_number}. {heading_text}
+                </div>
+                """
+            )
+
+            budget_section = (
+                "BUDGET" in heading_text.upper()
+                or "MONEY" in heading_text.upper()
+            )
+
+            continue
+
+        if (
+            "estimated daily total" in line.lower()
+            or "estimated total for 3 days" in line.lower()
+        ):
+
+            output.append(
+                f"""
+                <div class="budget-total">
+                    {line}
+                </div>
+                """
+            )
+
+            continue
+
+        budget_keywords = [
+            "accommodation:",
+            "food:",
+            "local transportation:",
+            "transportation:",
+            "attractions:",
+            "miscellaneous:"
+        ]
+
+        if any(
+            line.lower().startswith(keyword)
+            for keyword in budget_keywords
+        ):
+
+            parts = line.split(":", 1)
+
+            if len(parts) == 2:
+
+                label = parts[0]
+                value = parts[1]
+
+                output.append(
+                    f"""
+                    <div class="travel-point">
+                        <span class="travel-label">
+                            {label}:
+                        </span>
+                        {value}
+                    </div>
+                    """
+                )
+
+            continue
+
+        if line.startswith("-"):
+
+            content = line[1:].strip()
+
+            # Highlight labels before colon
+            if ":" in content:
+
+                parts = content.split(":", 1)
+
+                label = parts[0]
+                value = parts[1]
+
+                output.append(
+                    f"""
+                    <div class="travel-point">
+                        <span class="travel-label">
+                            {label}:
+                        </span>
+                        {value}
+                    </div>
+                    """
+                )
+
+            else:
+
+                output.append(
+                    f"""
+                    <div class="travel-point">
+                        • {content}
+                    </div>
+                    """
+                )
+
+            continue
+
+        label_match = re.match(
+            r"^([^:]{1,50}):\s*(.*)$",
+            line
+        )
+
+        if label_match:
+
+            label = label_match.group(1).strip()
+            value = label_match.group(2).strip()
+
+            output.append(
+                f"""
+                <div class="travel-text">
+                    <span class="travel-label">
+                        {label}:
+                    </span>
+                    {value}
+                </div>
+                """
+            )
+
+            continue
+
+        if re.match(r"^Day\s+\d+", line, re.IGNORECASE):
+
+            output.append(
+                f"""
+                <div class="travel-subheading">
+                    {line}
+                </div>
+                """
+            )
+
+            continue
+
+        if (
+            len(line) < 60
+            and not line.endswith(".")
+            and not line.startswith("₹")
+        ):
+
+            output.append(
+                f"""
+                <div class="travel-subheading">
+                    {line}
+                </div>
+                """
+            )
+
+            continue
+
+        output.append(
+            f"""
+            <div class="travel-text">
+                {line}
+            </div>
+            """
+        )
+
+    return "\n".join(output)
 
 st.markdown(
     '<p class="main-title">✈️ AI Travel Planner for Students</p>',
@@ -139,9 +390,6 @@ st.markdown(
 st.write(
     "Discover destinations, costs, and personalized student travel insights using AI."
 )
-
-
-# ---------------- SIDEBAR ----------------
 
 st.sidebar.header("🌍 Trip Details")
 
@@ -167,49 +415,47 @@ purpose = st.sidebar.selectbox(
     ]
 )
 
-
-# ---------------- GENERATE BUTTON ----------------
-
 if st.button("🚀 Generate Travel Guide"):
-
-    # ---------------- PROMPT ----------------
 
     prompt = f"""
 You are a professional student travel planner.
 
-Create a clear, practical, human-readable travel guide for:
+Create a practical and human-readable travel guide.
 
 Destination: {destination}
 Budget Level: {budget}
 Travel Purpose: {purpose}
 
+The information must be useful for a real student planning this trip.
+
+IMPORTANT FORMATTING RULES:
+
+- Do not use asterisks.
+- Do not use **.
+- Do not use markdown headings such as # or ##.
+- Do not use citations such as [1], [2], [3].
+- Do not use tables.
+- Do not use emojis.
+- Use numbered section headings exactly as shown below.
+- Use "-" for bullet points.
+- Keep sentences short and easy to understand.
+- Avoid unnecessary long paragraphs.
+- Give practical and realistic information.
+- Do not repeat information.
+
 IMPORTANT:
-The student should be able to read the guide quickly and understand exactly what to do.
+Make the budget realistic for the selected destination and budget level.
 
-STRICT FORMATTING RULES:
+Do not invent exact prices when they vary.
+Use reasonable price ranges.
 
-1. DO NOT use asterisks (*) anywhere.
-2. DO NOT use citations such as [1], [2], [3], [5], etc.
-3. DO NOT use markdown tables.
-4. DO NOT write long paragraphs.
-5. Use clear numbered headings.
-6. Use simple bullet points using the "-" symbol only.
-7. Keep sentences short and natural.
-8. Do not repeat the same information.
-9. Give practical information that a student can actually use.
-10. Do not mention that the information was generated by AI.
-11. Do not add unnecessary explanations.
-12. Do not use emojis.
-13. Do not use decorative symbols such as *, **, ###, or ##.
-14. Keep the formatting consistent throughout the entire response.
+For all budget calculations, make sure the totals are mathematically consistent.
 
 Use this exact structure:
 
 1. TRIP OVERVIEW
 
-Give a short 2-3 sentence overview of the destination and why it is suitable for the selected travel purpose.
-
-Then provide:
+Give 2-3 short sentences.
 
 - Best for:
 - Recommended stay:
@@ -221,22 +467,18 @@ Then provide:
 
 Give 6-8 important places.
 
-For every place use this format:
+For each place:
 
 Place Name
 - Why visit:
 - What to see:
 - Approximate visit time:
-- Cost: Free or approximate cost
+- Cost:
 - Student tip:
 
 3. DAILY BUDGET
 
-This section is very important.
-
-Give a realistic estimated DAILY budget based on the selected budget level.
-
-Use exactly this format:
+Give the estimated daily budget.
 
 Accommodation: ₹X - ₹X
 Food: ₹X - ₹X
@@ -246,18 +488,12 @@ Miscellaneous: ₹X - ₹X
 
 Estimated Daily Total: ₹X - ₹X
 
-Then explain in 2 short points:
-
-- What is included in this budget
-- How a student can reduce the cost
-
-Do not add fake precision. Use realistic ranges.
+- What is included:
+- How to save money:
 
 4. TOTAL TRIP BUDGET
 
-Calculate an estimated budget for a 3-day trip.
-
-Show:
+Calculate a realistic estimated budget for 3 days.
 
 Accommodation for 3 days: ₹X - ₹X
 Food for 3 days: ₹X - ₹X
@@ -267,77 +503,67 @@ Miscellaneous: ₹X - ₹X
 
 Estimated Total for 3 Days: ₹X - ₹X
 
-Make sure the total is mathematically consistent with the individual amounts.
-
 5. BEST TIME TO VISIT
-
-Explain:
 
 - Best months:
 - Best weather:
 - Budget-friendly period:
 - Busy period:
-- Periods students may want to avoid:
+- Period to avoid if possible:
 
 6. FOOD GUIDE
 
-Give practical student-friendly food options.
-
 Breakfast
-- 2-3 options
-- Approximate cost
+- Food option:
+- Approximate cost:
 
 Lunch
-- 2-3 options
-- Approximate cost
+- Food option:
+- Approximate cost:
 
 Dinner
-- 2-3 options
-- Approximate cost
+- Food option:
+- Approximate cost:
 
 Budget food tips:
-- 3-4 practical tips
+- Tip:
+- Tip:
+- Tip:
 
 7. TRANSPORTATION GUIDE
 
-Explain:
-
-- Best public transport option
-- Approximate daily transportation cost
-- How students should pay
-- When walking is better
-- When public transport is better
-- One important transport-saving tip
+- Best public transport:
+- Approximate daily cost:
+- Payment method:
+- When walking is better:
+- When public transport is better:
+- Transportation saving tip:
 
 8. STUDENT-FRIENDLY ACTIVITIES
 
 Give 5 activities.
 
-For each:
-
-Activity
+Activity Name
 - Approximate cost:
 - Time required:
 - Why students may enjoy it:
 
-Include a mixture of free and paid activities.
+Include both free and paid activities.
 
 9. SAFETY AND TRAVEL TIPS
 
-Give 6-8 short practical tips covering:
+Give 6-8 practical tips.
 
-- Personal safety
-- Money
-- Documents
-- Mobile internet
-- Weather
-- Public transport
-- Tourist scams
-- Emergency situations
+- Personal safety:
+- Money:
+- Documents:
+- Mobile internet:
+- Weather:
+- Public transport:
+- Tourist scams:
+- Emergency situations:
 
 10. QUICK 3-DAY PLAN
-
-Create a simple itinerary:
 
 Day 1
 Morning:
@@ -356,49 +582,52 @@ Evening:
 
 11. MONEY-SAVING TIPS
 
-Give 6 practical ways a student can reduce travel expenses.
+Give 6 practical tips.
+
+- Tip:
+- Tip:
+- Tip:
+- Tip:
+- Tip:
+- Tip:
 
 12. FINAL RECOMMENDATION
 
-Give a short 3-4 sentence conclusion explaining whether the destination is suitable for the selected budget and travel purpose.
+Give a short 3-4 sentence recommendation.
 
-FINAL CHECK BEFORE ANSWERING:
+FINAL CHECK:
 
 - No asterisks.
-- No [1], [2], [3] citations.
+- No citations.
 - No tables.
+- No emojis.
 - No long paragraphs.
 - Use numbered headings.
-- Use "-" for bullets.
-- Keep all costs clear.
-- Make the daily and 3-day totals mathematically consistent.
-- Keep the language simple and human-readable.
+- Use "-" bullets.
+- Use realistic costs.
+- Ensure all budget totals are mathematically consistent.
+- Keep the language simple and student-friendly.
 """
-
-
-    # ---------------- API HEADERS ----------------
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
 
-
-    # ---------------- API DATA ----------------
-
     data = {
-        "model": "openrouter/auto",
+        "model": "openrouter/free",
+
         "messages": [
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        "max_tokens": 1000
+
+        "max_tokens": 2500,
+
+        "temperature": 0.5
     }
-
-
-    # ---------------- API REQUEST ----------------
 
     with st.spinner("🤖 AI is generating travel guide..."):
 
@@ -408,31 +637,27 @@ FINAL CHECK BEFORE ANSWERING:
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=60
+                timeout=90
             )
-
-
-            # ---------------- SUCCESS ----------------
 
             if response.status_code == 200:
 
                 response_data = response.json()
 
-                # Check that choices exists
-                if "choices" in response_data:
+                if (
+                    "choices" in response_data
+                    and len(response_data["choices"]) > 0
+                    and "message" in response_data["choices"][0]
+                ):
 
                     result = response_data["choices"][0]["message"]["content"]
 
-                    st.success("✅ Travel Guide Ready!")
+                    # Format the AI response
+                    formatted_result = format_travel_result(result)
 
-
-                    # ---------------- COLUMNS ----------------
+                    st.success("Travel Guide Ready!")
 
                     col1, col2 = st.columns([3, 1])
-
-
-                    # ---------------- TRAVEL GUIDE ----------------
-
                     with col1:
 
                         st.markdown(
@@ -442,14 +667,11 @@ FINAL CHECK BEFORE ANSWERING:
                         st.markdown(
                             f"""
                             <div class="card">
-                            {result}
+                                {formatted_result}
                             </div>
                             """,
                             unsafe_allow_html=True
                         )
-
-
-                    # ---------------- TRAVEL TIPS ----------------
 
                     with col2:
 
@@ -476,6 +698,7 @@ FINAL CHECK BEFORE ANSWERING:
                             unsafe_allow_html=True
                         )
 
+
                 else:
 
                     st.error(
@@ -483,9 +706,6 @@ FINAL CHECK BEFORE ANSWERING:
                     )
 
                     st.json(response_data)
-
-
-            # ---------------- API ERROR ----------------
 
             else:
 
@@ -503,26 +723,17 @@ FINAL CHECK BEFORE ANSWERING:
 
                     st.write(response.text)
 
-
-        # ---------------- TIMEOUT ERROR ----------------
-
         except requests.exceptions.Timeout:
 
             st.error(
                 "The API request timed out. Please try again."
             )
 
-
-        # ---------------- CONNECTION ERROR ----------------
-
         except requests.exceptions.RequestException as e:
 
             st.error(
                 f"Connection error: {e}"
             )
-
-
-        # ---------------- OTHER ERROR ----------------
 
         except Exception as e:
 
